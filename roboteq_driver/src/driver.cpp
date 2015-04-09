@@ -25,8 +25,68 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "roboteq_driver/controller.h"
 #include "roboteq_driver/channel.h"
+#include "geometry_msgs/Twist.h"
+
 
 #include "ros/ros.h"
+#include <math.h>
+
+#include "roboteq_msgs/Command.h"
+
+
+static const float kMAX_SPEED_MS = 2.0;
+
+static const float kMAX_SPEED = 200;
+static const float kMIN_SPEED = -200;
+static const float kMAX_ROT_SPEED = 200;
+
+static roboteq::Controller * controller_handle;
+
+
+// left is steering and right is speed
+// open loop version using arbitrary values
+void twist_callback_open_loop(const geometry_msgs::Twist tw)
+{
+    ROS_INFO("got twist callback");
+
+    geometry_msgs::Vector3 lin = tw.linear;
+    geometry_msgs::Vector3 ang = tw.angular;
+
+    const float speed = lin.x;
+    const float rotation = ang.z;
+
+    // let's set 2/ms to 200
+
+    // RIGHT
+    float speed_command = speed / kMAX_SPEED_MS *  kMAX_SPEED;
+
+     if(speed_command >= 0) {
+        speed_command = std::max(speed_command, kMAX_SPEED);
+        }
+    else {
+        speed_command = std::min(speed_command, kMIN_SPEED);
+        }
+
+     roboteq_msgs::Command RIGHT_COMMAND;
+     RIGHT_COMMAND.commanded_velocity = speed_command;
+
+
+    // LEFT angular component is radians per second
+    // max value is pi / 8
+
+
+    float rotation_command = rotation / (2*M_PI) * kMAX_ROT_SPEED;
+    roboteq_msgs::Command LEFT_COMMAND;
+    LEFT_COMMAND.commanded_velocity = rotation_command;
+
+
+    roboteq::Channel * LEFT_CHANNEL = controller_handle->getChannel(0);
+    roboteq::Channel * RIGHT_CHNANEL = controller_handle->getChannel(1);
+
+    LEFT_CHANNEL->cmdCallback(LEFT_COMMAND);
+    RIGHT_CHNANEL->cmdCallback(RIGHT_COMMAND);
+
+}
 
 
 int main(int argc, char **argv) {
@@ -36,20 +96,21 @@ int main(int argc, char **argv) {
   std::string port = "/dev/ttyUSB0";
   int32_t baud = 115200;
   std::string channels = "[left]";
-  
+
   nh.param<std::string>("port", port, port);
   nh.param<int32_t>("baud", baud, baud);
   nh.param<std::string>("channels", channels, channels);
 
   // Interface to motor controller.
   roboteq::Controller controller(port.c_str(), baud);
+  controller_handle = &controller;
 
   // Setup channels.
   if (nh.hasParam("channels")) {
     XmlRpc::XmlRpcValue channel_namespaces;
     nh.getParam("channels", channel_namespaces);
     ROS_ASSERT(channel_namespaces.getType() == XmlRpc::XmlRpcValue::TypeArray);
-    for (int i = 0; i < channel_namespaces.size(); ++i) 
+    for (int i = 0; i < channel_namespaces.size(); ++i)
     {
       ROS_ASSERT(channel_namespaces[i].getType() == XmlRpc::XmlRpcValue::TypeString);
       controller.addChannel(new roboteq::Channel(1 + i, channel_namespaces[i], &controller));
@@ -57,7 +118,10 @@ int main(int argc, char **argv) {
   } else {
     // Default configuration is a single channel in the node's namespace.
     controller.addChannel(new roboteq::Channel(1, "~", &controller));
-  } 
+  }
+
+   // add handling for twist messages (requires initialized controller)
+  ros::Subscriber twistSub = nh.subscribe("/cmd_vel", 1, twist_callback_open_loop);
 
   // Attempt to connect and run.
   while (ros::ok()) {
@@ -74,7 +138,7 @@ int main(int argc, char **argv) {
       ROS_DEBUG("Problem connecting to serial device.");
       ROS_ERROR_STREAM_ONCE("Problem connecting to port " << port << ". Trying again every 1 second.");
       sleep(1);
-    }  
+    }
   }
 
   return 0;

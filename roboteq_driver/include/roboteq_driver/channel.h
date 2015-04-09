@@ -41,8 +41,10 @@ public:
   Channel(int channel_num, std::string ns, Controller* controller);
   void feedbackCallback(std::vector<std::string>);
 
-protected:
   void cmdCallback(const roboteq_msgs::Command&);
+
+protected:
+
   void timerCallback(const ros::TimerEvent&);
 
   ros::NodeHandle nh_;
