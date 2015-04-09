@@ -35,11 +35,11 @@ int main(int argc, char **argv) {
 
   std::string port = "/dev/ttyUSB0";
   int32_t baud = 115200;
-  int32_t channels = 1;
+  std::string channels = "[left]";
   
   nh.param<std::string>("port", port, port);
   nh.param<int32_t>("baud", baud, baud);
-  nh.param<int32-t>("channels", channels, channels)
+  nh.param<std::string>("channels", channels, channels);
 
   // Interface to motor controller.
   roboteq::Controller controller(port.c_str(), baud);
