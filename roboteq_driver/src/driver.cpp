@@ -47,28 +47,36 @@ static roboteq::Controller * controller_handle;
 // open loop version using arbitrary values
 void twist_callback_open_loop(const geometry_msgs::Twist tw)
 {
-    ROS_INFO("got twist callback");
+
 
     geometry_msgs::Vector3 lin = tw.linear;
     geometry_msgs::Vector3 ang = tw.angular;
 
+
+
     const float speed = lin.x;
     const float rotation = ang.z;
+
+
 
     // let's set 2/ms to 200
 
     // RIGHT
     float speed_command = speed / kMAX_SPEED_MS *  kMAX_SPEED;
 
+    ROS_INFO("got twist callback %f %f %f", speed, rotation, speed_command);
+
      if(speed_command >= 0) {
-        speed_command = std::max(speed_command, kMAX_SPEED);
+        speed_command = std::min(speed_command, kMAX_SPEED);
         }
     else {
-        speed_command = std::min(speed_command, kMIN_SPEED);
+        speed_command = std::max(speed_command, kMIN_SPEED);
         }
 
-     roboteq_msgs::Command RIGHT_COMMAND;
-     RIGHT_COMMAND.commanded_velocity = speed_command;
+     roboteq_msgs::Command SPEED_COMMAND;
+     SPEED_COMMAND.commanded_velocity = speed_command;
+
+
 
 
     // LEFT angular component is radians per second
@@ -76,15 +84,17 @@ void twist_callback_open_loop(const geometry_msgs::Twist tw)
 
 
     float rotation_command = rotation / (2*M_PI) * kMAX_ROT_SPEED;
-    roboteq_msgs::Command LEFT_COMMAND;
-    LEFT_COMMAND.commanded_velocity = rotation_command;
+    roboteq_msgs::Command ROTATE_COMMAND;
+    ROTATE_COMMAND.commanded_velocity = rotation_command;
 
 
-    roboteq::Channel * LEFT_CHANNEL = controller_handle->getChannel(0);
-    roboteq::Channel * RIGHT_CHNANEL = controller_handle->getChannel(1);
+    roboteq::Channel * ROTATE_CHANNEL = controller_handle->getChannel(0);
+    roboteq::Channel * SPEED_CHNANEL = controller_handle->getChannel(1);
 
-    LEFT_CHANNEL->cmdCallback(LEFT_COMMAND);
-    RIGHT_CHNANEL->cmdCallback(RIGHT_COMMAND);
+    ROTATE_CHANNEL->cmdCallback(ROTATE_COMMAND);
+    SPEED_CHNANEL->cmdCallback(SPEED_COMMAND);
+
+    ROS_INFO("Commands rot: %f  vel: %f", rotation_command, speed_command );
 
 }
 
