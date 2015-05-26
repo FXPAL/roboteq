@@ -36,9 +36,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 static const float kMAX_SPEED_MS = 2.0;
 
-static const float kMAX_SPEED = 200;
-static const float kMIN_SPEED = -200;
-static const float kMAX_ROT_SPEED = 200;
+static const float kMAX_SPEED = 1000;
+static const float kMIN_SPEED = -kMAX_SPEED;
+static const float kMAX_ROT_SPEED = 750;
 
 static roboteq::Controller * controller_handle;
 
@@ -93,6 +93,7 @@ void twist_callback_open_loop(const geometry_msgs::Twist tw)
 
     ROTATE_CHANNEL->cmdCallback(ROTATE_COMMAND);
     SPEED_CHNANEL->cmdCallback(SPEED_COMMAND);
+
 
     ROS_INFO("Commands rot: %f  vel: %f", rotation_command, speed_command );
 
